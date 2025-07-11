@@ -1,0 +1,48 @@
+version: "3.8"
+
+services:
+  mariadb:
+    image: mariadb:10.6
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --skip-character-set-client-handshake
+      --skip-innodb-read-only-compressed
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}      # set in Coolify → Environment
+    volumes:
+      - mariadb-data:/var/lib/mysql
+
+  redis-cache:
+    image: redis:alpine
+
+  redis-queue:
+    image: redis:alpine
+
+  frappe:
+    image: frappe/bench:latest                        # ✔ same image you pulled
+    command: bench start                              # start the web+workers
+    environment:
+      SITE_NAME: ${SITE_NAME}                         # e.g. erp.yourdomain.com
+      DB_ROOT_USER: root
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}               # first-user password
+      INSTALL_APPS: erpnext                           # auto-installs on first run
+    volumes:
+      - sites-data:/workspace/sites                   # DB & files
+      - logs-data:/workspace/logs
+    depends_on:
+      - mariadb
+      - redis-cache
+      - redis-queue
+    # ⬇️  NO ports: section — Traefik will proxy 443→8000 internally
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.erpnext.rule=Host(`${ERP_DOMAIN}`)
+      - traefik.http.routers.erpnext.entrypoints=websecure
+      - traefik.http.routers.erpnext.tls.certresolver=letsencrypt
+
+volumes:
+  mariadb-data:
+  sites-data:
+  logs-data:
