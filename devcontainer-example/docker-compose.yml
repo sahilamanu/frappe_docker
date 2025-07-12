@@ -5,7 +5,7 @@ services:
     image: mariadb:10.6
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: my-secret-root
+      MYSQL_ROOT_PASSWORD: erpnext123
     volumes:
       - mariadb-data:/var/lib/mysql
 
@@ -30,19 +30,23 @@ services:
       - redis-queue
       - redis-socketio
     environment:
-      SITE_NAME: "erp.yourdomain.com"
+      SITE_NAME: "erp.sahilamanu.com"
       DB_ROOT_USER: root
-      MYSQL_ROOT_PASSWORD: my-secret-root
+      MYSQL_ROOT_PASSWORD: erpnext123
       ADMIN_PASSWORD: admin
       INSTALL_APPS: erpnext
-    ports:
-      - "8000:8000"  # Optional if you expose directly
     volumes:
       - sites-vol:/var/www/html/sites
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.erpnext.rule=Host(`erp.sahilamanu.com`)"
+      - "traefik.http.routers.erpnext.entrypoints=websecure"
+      - "traefik.http.routers.erpnext.tls.certresolver=letsencrypt"
+      - "traefik.http.services.erpnext.loadbalancer.server.port=8000"
     command: >
       bash -c "
         if [ ! -f /var/www/html/sites/common_site_config.json ]; then
-          bench new-site $SITE_NAME --mariadb-root-password=$MYSQL_ROOT_PASSWORD --admin-password=$ADMIN_PASSWORD --install-app $INSTALL_APPS
+          bench new-site erp.sahilamanu.com --mariadb-root-password=$MYSQL_ROOT_PASSWORD --admin-password=$ADMIN_PASSWORD --install-app $INSTALL_APPS
         fi &&
         bench start
       "
@@ -52,6 +56,8 @@ services:
     restart: always
     depends_on:
       - erpnext-app
+    volumes:
+      - sites-vol:/var/www/html/sites
     command: bench worker --queue default
 
   queue-long:
@@ -59,6 +65,8 @@ services:
     restart: always
     depends_on:
       - erpnext-app
+    volumes:
+      - sites-vol:/var/www/html/sites
     command: bench worker --queue long
 
   queue-short:
@@ -66,6 +74,8 @@ services:
     restart: always
     depends_on:
       - erpnext-app
+    volumes:
+      - sites-vol:/var/www/html/sites
     command: bench worker --queue short
 
   scheduler:
@@ -73,6 +83,8 @@ services:
     restart: always
     depends_on:
       - erpnext-app
+    volumes:
+      - sites-vol:/var/www/html/sites
     command: bench schedule
 
 volumes:
