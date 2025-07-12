@@ -5,7 +5,7 @@ services:
     image: mariadb:10.6
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: erpnext123
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     volumes:
       - mariadb-data:/var/lib/mysql
 
@@ -30,28 +30,27 @@ services:
       - redis-queue
       - redis-socketio
     environment:
-      SITE_NAME: "erp.sahilamanu.com"
+      SITE_NAME: ${SITE_NAME}
       DB_ROOT_USER: root
-      MYSQL_ROOT_PASSWORD: erpnext123
-      ADMIN_PASSWORD: admin
-      INSTALL_APPS: erpnext
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      INSTALL_APPS: ${INSTALL_APPS}
     volumes:
       - sites-vol:/var/www/html/sites
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.erpnext.rule=Host(`erp.sahilamanu.com`)"
+      - "traefik.http.routers.erpnext.rule=Host(`${SITE_NAME}`)"
       - "traefik.http.routers.erpnext.entrypoints=websecure"
       - "traefik.http.routers.erpnext.tls.certresolver=letsencrypt"
       - "traefik.http.services.erpnext.loadbalancer.server.port=8000"
     entrypoint: ["/bin/bash", "-c"]
-    command:
-      - |
-        if [ ! -f "/var/www/html/sites/${SITE_NAME}/site_config.json" ]; then
-          echo "Creating new site ${SITE_NAME} ..."
-          bench new-site ${SITE_NAME} --mariadb-root-password=${MYSQL_ROOT_PASSWORD} --admin-password=${ADMIN_PASSWORD} --install-app ${INSTALL_APPS} --force
-        fi
-        echo "Starting bench..."
-        bench start
+    command: |
+      if [ ! -f "/var/www/html/sites/${SITE_NAME}/site_config.json" ]; then
+        echo "Creating site ${SITE_NAME}..."
+        bench new-site ${SITE_NAME} --mariadb-root-password=${MYSQL_ROOT_PASSWORD} --admin-password=${ADMIN_PASSWORD} --install-app ${INSTALL_APPS} --force
+      fi
+      echo "Starting bench..."
+      bench start
 
   queue-default:
     image: frappe/erpnext:version-15
